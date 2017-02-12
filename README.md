@@ -47,7 +47,8 @@ You can simply run them as jar applications or
 you can configure your ide to run jar application so you can debug it.
 
 ```sh
-java -jar ./pajara-micro.jar --deploy ./build/libs/comments-1.0.0-local.war
+gradle build -Penv=local
+java -jar ./pajara-micro.jar --deploy ./build/libs/starter-1.0.0-local.war
 ```
 note if you did not download payara micro run 
 ```sh
