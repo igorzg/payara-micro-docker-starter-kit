@@ -36,4 +36,15 @@ public class Service {
     public void setMessage(String message) {
         this.message = message;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Service)) {
+            return false;
+        }
+        Service service = (Service) o;
+        return service.getMessage().equals(this.getMessage()) &&
+                service.getVersion().equals(this.getVersion()) &&
+                service.getName().equals(this.getName());
+    }
 }
