@@ -23,7 +23,7 @@ public class StatusResourceTest {
     public void t1Status() {
         Service service = new Service();
         service.setMessage("Service is up and running");
-        service.setName("comments");
+        service.setName("starter");
         service.setVersion(Config.toString("version") + ":" + Config.toString("environment"));
         assertEquals(statusResource.status(), service);
     }
