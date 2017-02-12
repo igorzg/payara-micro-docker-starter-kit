@@ -91,7 +91,14 @@ task buildConfig(type: Copy) {
     from("src/main/resources/environments/${env}.properties") {
         rename "${env}.properties", "config.properties"
     }
-    into "src/main/resources/"
+    into sourceSets.main.output.resourcesDir
+    doLast {
+        Properties props = new Properties()
+        File propsFile = new File("${sourceSets.main.output.resourcesDir}/config.properties")
+        props.load(propsFile.newDataInputStream())
+        props.setProperty("version", version.toString())
+        props.store(propsFile.newWriter(), null)
+    }
 }
 
 tasks.compileJava.dependsOn buildConfig

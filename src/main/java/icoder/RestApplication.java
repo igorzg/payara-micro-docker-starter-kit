@@ -18,7 +18,6 @@ public class RestApplication extends Application {
         // load properties
         try {
             Config.load("config.properties", this.getClass().getClassLoader());
-            Config.load("release.properties", this.getClass().getClassLoader());
         } catch (Exception e) {
             e.printStackTrace();
         }
