@@ -1,6 +1,6 @@
 #Java EE micro service starter kit
 In this example you can see how to setup build ready for micro service java ee environment
-
+By default server will be running on port 8080
 
 ## Requirements:
 
@@ -36,7 +36,6 @@ gradle itest -Pport=9002
 
 ###  Starting/stopping docker server
 ```sh
-gradle buildDocker
 gradle startDocker
 gradle stopDoker
 ```
