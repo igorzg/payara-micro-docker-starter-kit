@@ -24,10 +24,11 @@ gradle test -Penv=test
 ```
 
 ### Starting integration test:
+All integration tests are running in docker.
 ```sh
 gradle itest
 ```
-starting multiple integration tests in parallel
+Starting multiple integration tests in parallel:
 ```sh
 gradle itest -Pport=9000
 gradle itest -Pport=9001
