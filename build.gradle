@@ -1,0 +1,211 @@
+plugins {
+    id "war"
+    id "de.undercouch.download" version "3.2.0"
+}
+
+group "microservice"
+
+repositories {
+    mavenCentral()
+}
+
+/**
+ * Set sources for integration tests
+ */
+sourceSets {
+    integration {
+        java.srcDir 'src/test/java'
+        resources.srcDir 'src/test/resources'
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
+    }
+}
+configurations {
+    integrationCompile.extendsFrom testCompile
+    integrationRuntime.extendsFrom testRuntime
+}
+
+/**
+ * Compile dependencies
+ */
+dependencies {
+
+    String powerMockVersion = "1.6.6"
+    String mockitoVersion = "1.10.19"
+    String jUnitVersion = "4.12"
+    String log4jVersion = "2.7"
+    String guavaVersion = "21.0"
+    String jacksonDataBindVersion = "2.8.6"
+    String javaEEApiVersion = "7.0"
+    String jerseyVersion = "2.25"
+
+    compile(
+            "org.apache.logging.log4j:log4j-core:$log4jVersion",
+            "org.apache.logging.log4j:log4j-api:$log4jVersion",
+            "com.google.guava:guava:$guavaVersion",
+            "com.fasterxml.jackson.core:jackson-databind:${jacksonDataBindVersion}",
+    )
+    providedCompile "javax:javaee-api:$javaEEApiVersion"
+    testCompileOnly "javax:javaee-api:$javaEEApiVersion"
+    testCompile(
+            "org.apache.logging.log4j:log4j-core:$log4jVersion",
+            "org.apache.logging.log4j:log4j-api:$log4jVersion",
+            "org.powermock:powermock-module-junit4:$powerMockVersion",
+            "org.powermock:powermock-module-junit4-rule:$powerMockVersion",
+            "org.powermock:powermock-api-mockito:$powerMockVersion",
+            "org.powermock:powermock:$powerMockVersion",
+            "org.mockito:mockito-core:$mockitoVersion",
+            "junit:junit:$jUnitVersion"
+    )
+    integrationCompile(
+            "org.glassfish.jersey.core:jersey-client:$jerseyVersion"
+    )
+}
+
+/**
+ * Configs
+ */
+ext {
+    dockerName = "${war.baseName}:$version"
+    dockerStartupName = "${war.baseName}_${version}_${port}"
+    warName = "${war.baseName}-$version"
+    dockerDir = "${project.buildDir}/docker"
+    warDir = "${project.buildDir}/libs"
+}
+
+/**
+ * Download payara micro
+ */
+task downloadPayaraMicro {
+    doFirst {
+        download {
+            src 'http://central.maven.org/maven2/fish/payara/extras/payara-micro/4.1.1.164/payara-micro-4.1.1.164.jar'
+            dest "$projectDir/payara-micro.jar"
+        }
+    }
+}
+/**
+ * Build configuration environment
+ */
+task buildConfig(type: Copy) {
+    from("src/main/resources/environments/${env}.properties") {
+        rename "${env}.properties", "config.properties"
+    }
+    into "src/main/resources/"
+}
+
+tasks.compileJava.dependsOn buildConfig
+tasks.war.dependsOn buildConfig
+/**
+ * Remove docker image
+ */
+task removeDocker(type: Exec) {
+    commandLine "docker", "rmi", "--force", "${dockerName}"
+}
+
+/**
+ * Bake docker image
+ */
+task buildDocker(type: Exec, dependsOn: war) {
+    workingDir dockerDir
+    standardOutput = new ByteArrayOutputStream()
+    commandLine "docker", "build", "-t", "${dockerName}", "."
+    doFirst {
+        println("$dockerDir/${warName}.war")
+        copy {
+            from("$warDir/${warName}.war") {
+                rename "${warName}.war", "app.war"
+            }
+            into dockerDir
+        }
+        copy {
+            from file("Dockerfile")
+            into dockerDir
+        }
+    }
+    doLast {
+        println(standardOutput.toString())
+    }
+    ext.output = {
+        return 0
+    }
+}
+
+/**
+ * Start docker container
+ */
+task startDocker(type: Exec, dependsOn: buildDocker) {
+    commandLine "docker", "run", "-d", "-p", "${port}:8080", "--name", "${dockerStartupName}", "--rm", "${dockerName}"
+}
+
+/**
+ * Stop docker container
+ */
+task stopDocker(type: Exec) {
+    commandLine "docker", "stop", "${dockerStartupName}"
+}
+
+/**
+ * Start payara micro server
+ */
+task startServer(type: Exec, dependsOn: war) {
+    commandLine "java", "-jar", "./payara-micro.jar", "--deploy", "$warDir/${warName}.war"
+    doFirst {
+        if (!file("./payara-micro.jar").exists()) {
+            tasks.downloadPayaraMicro.execute()
+        }
+    }
+}
+
+/**
+ * Testing unit tests configuration
+ */
+test {
+    scanForTestClasses = true
+    include 'unit/**/*Test.class'
+    maxParallelForks = 4
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat "full"
+        events = ["started", "passed", "skipped", "failed", "standard_out", "standard_error"]
+        showExceptions = true
+        showStackTraces = true
+    }
+    afterTest { desc, result ->
+        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
+    }
+}
+
+/**
+ * Integration testing configuration
+ */
+task itest(type: Test) {
+    System.setProperty "http.port", port
+    scanForTestClasses = true
+    include 'integration/**/*Test.class'
+    maxParallelForks = 4
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat "full"
+        events = ["started", "passed", "skipped", "failed", "standard_out", "standard_error"]
+        showExceptions = true
+        showStackTraces = true
+    }
+    afterTest { desc, result ->
+        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
+    }
+    doFirst {
+        println("Waiting 10 sec to deploy app in docker container")
+        sleep(10 * 1000)
+    }
+    // set class path and pass args
+    systemProperties = System.properties
+    testClassesDir = sourceSets.integration.output.classesDir
+    classpath = sourceSets.integration.runtimeClasspath
+}
+
+/**
+ * On integration test rumpup docker
+ */
+tasks.itest.dependsOn startDocker
+tasks.itest.finalizedBy stopDocker

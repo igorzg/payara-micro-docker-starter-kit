@@ -1,0 +1,5 @@
+.gradle/
+.idea/
+log/
+build/
+payara-micro.jar
