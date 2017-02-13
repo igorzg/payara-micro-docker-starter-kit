@@ -77,9 +77,10 @@ ext {
  * Download payara micro
  */
 task downloadPayaraMicro {
+    String payaraVersion = "4.1.1.164"
     doFirst {
         download {
-            src 'http://central.maven.org/maven2/fish/payara/extras/payara-micro/4.1.1.164/payara-micro-4.1.1.164.jar'
+            src "http://central.maven.org/maven2/fish/payara/extras/payara-micro/$payaraVersion/payara-micro-${payaraVersion}.jar"
             dest "$projectDir/payara-micro.jar"
         }
     }
@@ -131,7 +132,7 @@ task buildDocker(type: Exec, dependsOn: war) {
         }
     }
     doLast {
-        println(standardOutput.toString())
+        println standardOutput.toString()
     }
     ext.output = {
         return 0
@@ -179,14 +180,14 @@ test {
         showStackTraces = true
     }
     afterTest { desc, result ->
-        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
+        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
     }
 }
 
 /**
- * Integration testing configuration
+ * Integration testing runner without server environment
  */
-task itest(type: Test) {
+task itestRunner(type: Test) {
     System.setProperty "http.port", port
     scanForTestClasses = true
     include 'integration/**/*Test.class'
@@ -199,11 +200,7 @@ task itest(type: Test) {
         showStackTraces = true
     }
     afterTest { desc, result ->
-        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
-    }
-    doFirst {
-        println("Waiting 10 sec to deploy app in docker container")
-        sleep(10 * 1000)
+        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
     }
     // set class path and pass args
     systemProperties = System.properties
@@ -211,6 +208,18 @@ task itest(type: Test) {
     classpath = sourceSets.integration.runtimeClasspath
 }
 
+/**
+ * Integration test with docker start
+ */
+task itest {
+    doFirst {
+        println("${color_yellow}Waiting ${serverStartupTime} sec to deploy app in docker container${color_end}")
+        sleep(Integer.parseInt(serverStartupTime) * 1000)
+    }
+    doLast {
+        tasks.itestRunner.execute()
+    }
+}
 /**
  * On integration test rumpup docker
  */
