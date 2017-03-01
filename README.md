@@ -10,7 +10,7 @@
 
 ###  Building project
 ```sh
-gradle clean build -Penv=local
+gradle clean build -Penv=dev
 ```
 
 ###  Starting embedded server
@@ -47,7 +47,7 @@ You can simply run them as jar applications or
 you can configure your ide to run jar application so you can debug it.
 
 ```sh
-gradle build -Penv=local
+gradle build -Penv=dev
 java -jar ./pajara-micro.jar --deploy ./build/libs/starter-1.0.0.war
 ```
 note if you did not download payara micro run 
