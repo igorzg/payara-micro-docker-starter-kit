@@ -16,29 +16,42 @@ public class Config {
     private static Properties properties = new Properties();
 
     /**
-     * Check if is development
+     * @param name String
+     * @return String
+     */
+    public static Integer toInt(String name) {
+        return Integer.parseInt(toString(name));
+    }
+
+    /**
+     * Check environment
+     *
+     * @return String
+     */
+    private static boolean env(String name) {
+        String env = toString("environment");
+        if (Strings.isNullOrEmpty(env)) {
+            throw new RuntimeException("Configuration file is not loaded!");
+        }
+        return env.equals(name);
+    }
+
+    /**
+     * Check if is production
      *
      * @return String
      */
     public static boolean isDevelopment() {
-        String env = toString("environment");
-        if (Strings.isNullOrEmpty(env)) {
-            throw new RuntimeException("Configuration file is not loaded!");
-        }
-        return env.equals("development");
+        return env("development");
     }
 
     /**
-     * Check if is staging
+     * Check if is production
      *
      * @return String
      */
     public static boolean isStaging() {
-        String env = toString("environment");
-        if (Strings.isNullOrEmpty(env)) {
-            throw new RuntimeException("Configuration file is not loaded!");
-        }
-        return env.equals("staging");
+        return env("staging");
     }
 
     /**
@@ -47,11 +60,7 @@ public class Config {
      * @return String
      */
     public static boolean isTest() {
-        String env = toString("environment");
-        if (Strings.isNullOrEmpty(env)) {
-            throw new RuntimeException("Configuration file is not loaded!");
-        }
-        return env.equals("test");
+        return env("test");
     }
 
     /**
@@ -60,19 +69,7 @@ public class Config {
      * @return String
      */
     public static boolean isProduction() {
-        String env = toString("environment");
-        if (Strings.isNullOrEmpty(env)) {
-            throw new RuntimeException("Configuration file is not loaded!");
-        }
-        return env.equals("production");
-    }
-
-    /**
-     * @param name String
-     * @return String
-     */
-    public static Integer toInt(String name) {
-        return Integer.parseInt(toString(name));
+        return env("production");
     }
 
     /**
@@ -116,5 +113,18 @@ public class Config {
         InputStream inputStream = Config.class.getClassLoader().getResourceAsStream(fileName);
         properties.load(inputStream);
         return properties;
+    }
+
+    /**
+     * Load default config
+     *
+     * @since 1.1
+     */
+    public static void loadDefault() {
+        try {
+            load("config.properties");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

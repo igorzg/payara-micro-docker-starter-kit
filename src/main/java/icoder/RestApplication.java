@@ -1,9 +1,16 @@
 package icoder;
 
+import icoder.features.JacksonFeature;
 import icoder.helpers.Config;
+import org.reflections.Reflections;
 
 import javax.ws.rs.ApplicationPath;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.ext.Provider;
+import java.lang.annotation.Annotation;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Application initialization
@@ -13,14 +20,24 @@ import javax.ws.rs.core.Application;
 @ApplicationPath("/")
 public class RestApplication extends Application {
 
-    public RestApplication() {
-        super();
-        // load properties
-        try {
-            Config.load("config.properties", this.getClass().getClassLoader());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    static {
+        Config.loadDefault();
+    }
 
+    private List<Class<?>> getTypesAnnotatedWith(String packageName, Class<? extends Annotation> type) {
+        return new Reflections(packageName)
+                .getTypesAnnotatedWith(type)
+                .stream()
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> resources = new HashSet<>();
+        String PACKAGE_NAME = RestApplication.class.getPackage().getName();
+        resources.addAll(getTypesAnnotatedWith(PACKAGE_NAME, Path.class));
+        resources.addAll(getTypesAnnotatedWith(PACKAGE_NAME, Provider.class));
+        resources.add(JacksonFeature.class);
+        return resources;
     }
 }

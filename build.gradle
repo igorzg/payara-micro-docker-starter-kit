@@ -35,15 +35,17 @@ dependencies {
     String jUnitVersion = "4.12"
     String log4jVersion = "2.7"
     String guavaVersion = "21.0"
-    String jacksonDataBindVersion = "2.8.6"
+    String jasksonJsonVersion = "2.8.7"
+    String jersyJacksonVersion = "2.25.1"
     String javaEEApiVersion = "7.0"
-    String jerseyVersion = "2.25"
+    String reflectionsVersion = "0.9.10"
 
     compile(
             "org.apache.logging.log4j:log4j-core:$log4jVersion",
             "org.apache.logging.log4j:log4j-api:$log4jVersion",
+            "org.reflections:reflections:$reflectionsVersion",
             "com.google.guava:guava:$guavaVersion",
-            "com.fasterxml.jackson.core:jackson-databind:${jacksonDataBindVersion}",
+            "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:$jasksonJsonVersion"
     )
     providedCompile "javax:javaee-api:$javaEEApiVersion"
     testCompileOnly "javax:javaee-api:$javaEEApiVersion"
@@ -58,15 +60,16 @@ dependencies {
             "junit:junit:$jUnitVersion"
     )
     integrationCompile(
-            "org.glassfish.jersey.core:jersey-client:$jerseyVersion"
+            "org.glassfish.jersey.core:jersey-client:$jersyJacksonVersion"
     )
 }
+
 
 /**
  * Configs
  */
 ext {
-    dockerName = "${war.baseName}:$version"
+    dockerName = "${group}/${war.baseName}:${version}_${env}"
     dockerStartupName = "${war.baseName}_${version}_${port}"
     warName = "${war.baseName}-$version"
     dockerDir = "${project.buildDir}/docker"
@@ -77,10 +80,10 @@ ext {
  * Download payara micro
  */
 task downloadPayaraMicro {
-    String payaraVersion = "4.1.1.164"
+    String pmv = "4.1.1.171.0.1"
     doFirst {
         download {
-            src "http://central.maven.org/maven2/fish/payara/extras/payara-micro/$payaraVersion/payara-micro-${payaraVersion}.jar"
+            src "http://central.maven.org/maven2/fish/payara/extras/payara-micro/${pmv}/payara-micro-${pmv}.jar"
             dest "$projectDir/payara-micro.jar"
         }
     }
@@ -99,6 +102,7 @@ task buildConfig(type: Copy) {
         props.load(propsFile.newDataInputStream())
         props.setProperty("version", version.toString())
         props.store(propsFile.newWriter(), null)
+        mkdir dockerDir
     }
 }
 
@@ -112,52 +116,56 @@ task removeDocker(type: Exec) {
 }
 
 /**
+ *  Prepare docker files for buildDocker
+ */
+task prepareDockerFiles(type: Copy, dependsOn: war) {
+    println("$dockerDir/${warName}.war")
+    from("$warDir/${warName}.war") {
+        rename "${warName}.war", "app.war"
+    }
+    from file("Dockerfile")
+    into dockerDir
+    outputs.dir dockerDir
+}
+/**
  * Bake docker image
  */
-task buildDocker(type: Exec, dependsOn: war) {
-    workingDir dockerDir
+task buildDocker(type: Exec, dependsOn: prepareDockerFiles) {
     standardOutput = new ByteArrayOutputStream()
-    commandLine "docker", "build", "-t", "${dockerName}", "."
-    doFirst {
-        println("$dockerDir/${warName}.war")
-        copy {
-            from("$warDir/${warName}.war") {
-                rename "${warName}.war", "app.war"
-            }
-            into dockerDir
-        }
-        copy {
-            from file("Dockerfile")
-            into dockerDir
-        }
-    }
-    doLast {
-        println standardOutput.toString()
-    }
+    executable "docker"
+    args = ["build", "-t", "${dockerName}", "${dockerDir}"]
     ext.output = {
         return 0
     }
+    doFirst {
+        println("DOCKER DIR $dockerDir")
+    }
+    doLast {
+        println(standardOutput.toString())
+    }
+    outputs.upToDateWhen {
+        return !tasks.prepareDockerFiles.getDidWork()
+    }
 }
-
 /**
  * Start docker container
  */
 task startDocker(type: Exec, dependsOn: buildDocker) {
-    commandLine "docker", "run", "-d", "-p", "${port}:8080", "--name", "${dockerStartupName}", "--rm", "${dockerName}"
+    commandLine "docker", "run", "-d", "-p", "${port}:8080", "--name", "${dockerStartupName}", "${dockerName}"
 }
 
 /**
- * Stop docker container
+ * Stop docker and remove container
  */
 task stopDocker(type: Exec) {
-    commandLine "docker", "stop", "${dockerStartupName}"
+    commandLine "docker", "rm", "-f", "${dockerStartupName}"
 }
 
 /**
  * Start payara micro server
  */
 task startServer(type: Exec, dependsOn: war) {
-    commandLine "java", "-jar", "./payara-micro.jar", "--deploy", "$warDir/${warName}.war"
+    commandLine "java", "-jar", "./payara-micro.jar", "--deploy", "$warDir/${warName}.war", "--noCluster", "true"
     doFirst {
         if (!file("./payara-micro.jar").exists()) {
             tasks.downloadPayaraMicro.execute()
@@ -180,14 +188,14 @@ test {
         showStackTraces = true
     }
     afterTest { desc, result ->
-        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
     }
 }
 
 /**
- * Integration testing runner without server environment
+ * Integration testing configuration
  */
-task itestRunner(type: Test) {
+task itest(type: Test) {
     System.setProperty "http.port", port
     scanForTestClasses = true
     include 'integration/**/*Test.class'
@@ -200,7 +208,11 @@ task itestRunner(type: Test) {
         showStackTraces = true
     }
     afterTest { desc, result ->
-        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+        println "Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}"
+    }
+    outputs.upToDateWhen { false }
+    doFirst {
+        println("STARTING IT TEST")
     }
     // set class path and pass args
     systemProperties = System.properties
@@ -209,19 +221,13 @@ task itestRunner(type: Test) {
 }
 
 /**
- * Integration test with docker start
+ * Integration test in docker
  */
-task itest {
+task itestInDocker(type: Exec, dependsOn: startDocker) {
+    commandLine "gradle", "itest"
     doFirst {
-        println("${color_yellow}Waiting ${serverStartupTime} sec to deploy app in docker container${color_end}")
+        println("Waiting ${serverStartupTime} sec to deploy app in docker container")
         sleep(Integer.parseInt(serverStartupTime) * 1000)
     }
-    doLast {
-        tasks.itestRunner.execute()
-    }
+    finalizedBy stopDocker
 }
-/**
- * On integration test rumpup docker
- */
-tasks.itest.dependsOn startDocker
-tasks.itest.finalizedBy stopDocker
