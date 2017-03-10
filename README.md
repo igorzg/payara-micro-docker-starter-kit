@@ -5,7 +5,7 @@
 ## Requirements:
 
 1. [JDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
-2. [Gradle gte >= 2.1](https://gradle.org/) 
+2. [Gradle gte >= 2.1 prefered 3.x](https://gradle.org/) 
 3. [Docker engine](https://www.docker.com/products/overview)
 
 ###  Building project
