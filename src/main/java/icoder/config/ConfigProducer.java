@@ -17,7 +17,8 @@ public class ConfigProducer {
 
     private static Map<String, Config> configs = new HashMap<>();
 
-    @Produces @IConfig
+    @Produces
+    @IConfig
     public Config produce(InjectionPoint injectionPoint) throws IOException {
         Annotated annotated = injectionPoint.getAnnotated();
         IConfig iConfig = annotated.getAnnotation(IConfig.class);

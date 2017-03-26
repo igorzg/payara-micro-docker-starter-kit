@@ -23,18 +23,14 @@ public class JacksonFeature implements Feature {
     }
 
     static String getPropertyNameForRuntime(String key, RuntimeType runtimeType) {
-        if(runtimeType != null && key.startsWith("jersey.config")) {
+        if (runtimeType != null && key.startsWith("jersey.config")) {
             RuntimeType[] types = RuntimeType.values();
-            RuntimeType[] var3 = types;
-            int var4 = types.length;
-
-            for(int var5 = 0; var5 < var4; ++var5) {
-                RuntimeType type = var3[var5];
-                if(key.startsWith("jersey.config." + type.name().toLowerCase())) {
+            for (int i = 0; i < types.length; ++i) {
+                RuntimeType type = types[i];
+                if (key.startsWith("jersey.config." + type.name().toLowerCase())) {
                     return key;
                 }
             }
-
             return key.replace("jersey.config", "jersey.config." + runtimeType.name().toLowerCase());
         } else {
             return key;
@@ -45,7 +41,7 @@ public class JacksonFeature implements Feature {
         context.property("jersey.config.server.disableMoxyJson", Boolean.valueOf(true));
         Configuration config = context.getConfiguration();
         context.property(getPropertyNameForRuntime("jersey.config.jsonFeature", config.getRuntimeType()), JSON_FEATURE);
-        if(!config.isRegistered(JacksonJaxbJsonProvider.class)) {
+        if (!config.isRegistered(JacksonJaxbJsonProvider.class)) {
             context.register(JsonParseExceptionMapper.class);
             context.register(JsonMappingExceptionMapper.class);
             context.register(JacksonJaxbJsonProvider.class, new Class[]{MessageBodyReader.class, MessageBodyWriter.class});

@@ -16,6 +16,7 @@ import java.util.Properties;
 public class Config {
 
     private Properties properties = new Properties();
+
     /**
      * Check if is development
      *
@@ -112,6 +113,7 @@ public class Config {
     public void clear() {
         properties.clear();
     }
+
     /**
      * Load config file as Properties
      *
