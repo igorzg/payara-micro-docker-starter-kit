@@ -1,13 +1,30 @@
-#Java EE micro service starter kit with docker and payara micro
-* In this example you can see how to setup build ready for micro service java ee environment.
+# Java EE micro service starter for kit with docker, payara micro, arquillian and AWS Cloud 
+* This is complete example how to setup java ee ready for micro service AWS Cloud deployment with elastic beanstalk
 * By default server will be running on port 8080
 
-# Requirements:
+## Requirements:
 
 1. [JDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 2. [Gradle 3.x](https://gradle.org/) 
 3. [Docker](https://www.docker.com/products/overview)
 4. [AWS Cli](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
+
+##  Setting up properties 
+Before changing properties you need to setup AWS IAM account with Elastic Beanstalk / EC2 Container R/W permissions you as well
+need to create an EC2 Container remote repository and Elastic Beanstalk Single environment application with docker engine latest version 
+is suggested then you will need to change aws config in gradle.properties:
+```properties
+groupName=icoder
+awsAccessKey=YOUR_ACCESS_KEY
+awsSecretKey=YOUR_SECRET_KEY
+## EC2 Container Repository
+awsECR=YOUR_EC_REPOSITRY_URL
+## Elastic beanstalk config
+awsEBSBucket=YOUR_AWS_DEPLOYMENT_BUCKET_FOR_ELASTIC_BEANSTALK
+awsEBSApp=YOUR_ELASTIC_BEANSTALK_APPLICATION_NAME
+awsRegion=eu-central-1
+```
+
 
 ###  Building project
 ```sh
@@ -19,13 +36,14 @@ gradle clean build -Penv=local
 gradle startServer
 ```
 
-### Starting tests:
+### Starting unit tests:
 ```sh
 gradle test -Penv=test
 ```
 
-### Starting integration test:
-All integration tests are running in docker.
+### Starting integration test with arquillian:
+Before tests docker compose is started because you may need an local
+data store which you can run in docker.
 ```sh
 gradle itest -Penv=test
 ```
@@ -36,6 +54,13 @@ gradle startDocker
 gradle stopDoker
 ```
 
+###  Publishing to ecr repository
+This command creates elastic beanstalk application deployment version 
+and publish baked container to EC2 Container Repository:
+```sh
+gradle clean publishToECR -Penv=prod 
+```
+
 ### Example running apps manually:
 
 You can simply run them as jar applications or 
@@ -43,11 +68,14 @@ you can configure your ide to run jar application so you can debug it.
 
 ```sh
 gradle build -Penv=local
-java -jar ./pajara-micro.jar --deploy ./build/libs/starter-1.0.0-local.war
+java -jar ./pajara-micro.jar --deploy ./build/libs/starter-1.0.0.war
 ```
 note if you did not download payara micro run 
 ```sh
 gradle downloadPayaraMicro
 ```
+
+
+
 
 
