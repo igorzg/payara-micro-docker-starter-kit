@@ -2,7 +2,6 @@ package icoder.config;
 
 import com.google.common.base.Strings;
 
-import javax.ejb.Singleton;
 import javax.enterprise.inject.Default;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +13,6 @@ import java.util.Properties;
  * @since 2.2
  */
 @Default
-@Singleton
 public class Config {
 
     private Properties properties = new Properties();
