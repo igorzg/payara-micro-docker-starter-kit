@@ -1,9 +1,10 @@
 plugins {
     id "war"
+    id "idea"
     id "de.undercouch.download" version "3.2.0"
 }
 
-group "microservice"
+group "$groupName"
 
 repositories {
     mavenCentral()
@@ -13,9 +14,13 @@ repositories {
  * Set sources for integration tests
  */
 sourceSets {
+    test {
+        java.srcDir 'src/test/unit/java'
+        resources.srcDir 'src/test/unit/resources'
+    }
     integration {
-        java.srcDir 'src/test/java'
-        resources.srcDir 'src/test/resources'
+        java.srcDir 'src/test/integration/java'
+        resources.srcDir 'src/test/integration/resources'
         compileClasspath += main.output + test.output
         runtimeClasspath += main.output + test.output
     }
@@ -26,24 +31,34 @@ configurations {
 }
 
 /**
+ * Idea config
+ */
+idea {
+    module {
+        testSourceDirs = [
+                file('src/test/integration/java'),
+                file('src/test/unit/java')
+        ]
+        scopes.TEST.plus += [configurations.integrationCompile]
+    }
+}
+
+/**
  * Compile dependencies
  */
 dependencies {
-
-    String powerMockVersion = "1.6.6"
-    String mockitoVersion = "1.10.19"
-    String jUnitVersion = "4.12"
-    String log4jVersion = "2.7"
-    String guavaVersion = "21.0"
-    String jacksonDataBindVersion = "2.8.6"
-    String javaEEApiVersion = "7.0"
-    String jerseyVersion = "2.25"
-
     compile(
             "org.apache.logging.log4j:log4j-core:$log4jVersion",
             "org.apache.logging.log4j:log4j-api:$log4jVersion",
+            "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion",
+            "org.slf4j:slf4j-api:$slf4jApiVersion",
             "com.google.guava:guava:$guavaVersion",
-            "com.fasterxml.jackson.core:jackson-databind:${jacksonDataBindVersion}",
+            "org.reflections:reflections:$reflectionsVersion",
+            "com.fasterxml.jackson.datatype:jackson-datatype-jaxrs:$fastXmlJackson",
+            "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$fastXmlJackson",
+            "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$fastXmlJackson",
+            "com.fasterxml.jackson.core:jackson-databind:$fastXmlJackson",
+            "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:$fastXmlJackson",
     )
     providedCompile "javax:javaee-api:$javaEEApiVersion"
     testCompileOnly "javax:javaee-api:$javaEEApiVersion"
@@ -58,6 +73,9 @@ dependencies {
             "junit:junit:$jUnitVersion"
     )
     integrationCompile(
+            "fish.payara.extras:payara-embedded-all:$pmv",
+            "org.jboss.arquillian.junit:arquillian-junit-container:$junitArquillian",
+            "org.jboss.arquillian.container:arquillian-glassfish-embedded-3.1:$glassfishEmbedded",
             "org.glassfish.jersey.core:jersey-client:$jerseyVersion"
     )
 }
@@ -66,21 +84,22 @@ dependencies {
  * Configs
  */
 ext {
-    dockerName = "${war.baseName}:$version"
+    dockerName = "${group}/${war.baseName}:${version}_${env}"
     dockerStartupName = "${war.baseName}_${version}_${port}"
     warName = "${war.baseName}-$version"
     dockerDir = "${project.buildDir}/docker"
     warDir = "${project.buildDir}/libs"
+    awsS3File = "Dockerrun.aws.${rootProject.name}_${env}_${version}.json"
+    awsVersionLabel = "${rootProject.name}_${env}_${version}"
 }
 
 /**
  * Download payara micro
  */
 task downloadPayaraMicro {
-    String payaraVersion = "4.1.1.164"
     doFirst {
         download {
-            src "http://central.maven.org/maven2/fish/payara/extras/payara-micro/$payaraVersion/payara-micro-${payaraVersion}.jar"
+            src "http://central.maven.org/maven2/fish/payara/extras/payara-micro/${pmv}/payara-micro-${pmv}.jar"
             dest "$projectDir/payara-micro.jar"
         }
     }
@@ -89,8 +108,14 @@ task downloadPayaraMicro {
  * Build configuration environment
  */
 task buildConfig(type: Copy) {
-    from("src/main/resources/environments/${env}.properties") {
+    from("src/main/resources/${env}.properties") {
         rename "${env}.properties", "config.properties"
+    }
+    from("src/main/resources/${env}.log4j2.xml") {
+        rename "${env}.log4j2.xml", "log4j2.xml"
+    }
+    doFirst {
+        println("${color_yellow}#### BUILD " + env + "${color_end}")
     }
     into sourceSets.main.output.resourcesDir
     doLast {
@@ -98,7 +123,9 @@ task buildConfig(type: Copy) {
         File propsFile = new File("${sourceSets.main.output.resourcesDir}/config.properties")
         props.load(propsFile.newDataInputStream())
         props.setProperty("version", version.toString())
+        props.setProperty("applicationName", rootProject.name)
         props.store(propsFile.newWriter(), null)
+        mkdir dockerDir
     }
 }
 
@@ -112,52 +139,93 @@ task removeDocker(type: Exec) {
 }
 
 /**
+ *  Prepare docker files for buildDocker
+ */
+task prepareDockerFiles(type: Copy, dependsOn: war) {
+    println("$dockerDir/${warName}.war")
+    from("$warDir/${warName}.war") {
+        rename "${warName}.war", "app.war"
+    }
+    from file("Dockerfile")
+    into dockerDir
+    outputs.dir dockerDir
+}
+/**
  * Bake docker image
  */
-task buildDocker(type: Exec, dependsOn: war) {
-    workingDir dockerDir
+task buildDocker(type: Exec, dependsOn: prepareDockerFiles) {
     standardOutput = new ByteArrayOutputStream()
-    commandLine "docker", "build", "-t", "${dockerName}", "."
+    executable "docker"
+    args = ["build", "-t", "${dockerName}", "${dockerDir}"]
+    ext.output = {
+        return 0
+    }
     doFirst {
-        println("$dockerDir/${warName}.war")
-        copy {
-            from("$warDir/${warName}.war") {
-                rename "${warName}.war", "app.war"
-            }
-            into dockerDir
-        }
-        copy {
-            from file("Dockerfile")
-            into dockerDir
-        }
+        println("${color_yellow}DOCKER DIR $dockerDir ${color_end}")
     }
     doLast {
-        println standardOutput.toString()
+        println(standardOutput.toString())
     }
+    outputs.upToDateWhen {
+        return !tasks.prepareDockerFiles.getDidWork()
+    }
+}
+/**
+ * Start docker container
+ */
+task startDocker(type: Exec, dependsOn: buildDocker) {
+    commandLine "docker", "run", "-d", "-p", "${port}:${payaraPort}", "--name", "${dockerStartupName}", "${dockerName}"
+    doFirst {
+        println("${color_yellow}Docker compose start${color_end}")
+        tasks.dockerCompose.execute()
+    }
+}
+
+/**
+ * Docker remove
+ */
+task stopDocker(type: Exec) {
+    commandLine "docker", "rm", "-f", "${dockerStartupName}"
+    doLast {
+        println("${color_yellow}Docker compose down${color_end}")
+        tasks.dockerComposeDown.execute()
+    }
+}
+
+/**
+ *  Remove docker image
+ */
+task dockerRemoveImage(type: Exec) {
+    standardOutput = new ByteArrayOutputStream()
+    commandLine "docker", "rmi", "${dockerName}", "--force"
     ext.output = {
         return 0
     }
 }
 
 /**
- * Start docker container
+ *  Docker compose start containers
  */
-task startDocker(type: Exec, dependsOn: buildDocker) {
-    commandLine "docker", "run", "-d", "-p", "${port}:8080", "--name", "${dockerStartupName}", "--rm", "${dockerName}"
+task dockerCompose(type: Exec) {
+    commandLine "docker-compose", "up", "-d"
 }
-
 /**
- * Stop docker container
+ *  Docker compose stop containers
  */
-task stopDocker(type: Exec) {
-    commandLine "docker", "stop", "${dockerStartupName}"
+task dockerComposeDown(type: Exec) {
+    standardOutput = new ByteArrayOutputStream()
+    executable "docker-compose"
+    args = [ "down" ]
+    ext.output = {
+        return 0
+    }
 }
 
 /**
  * Start payara micro server
  */
 task startServer(type: Exec, dependsOn: war) {
-    commandLine "java", "-jar", "./payara-micro.jar", "--deploy", "$warDir/${warName}.war"
+    commandLine "java", "-jar", "./payara-micro.jar", "--deploy", "$warDir/${warName}.war", "--noCluster", "true"
     doFirst {
         if (!file("./payara-micro.jar").exists()) {
             tasks.downloadPayaraMicro.execute()
@@ -170,7 +238,7 @@ task startServer(type: Exec, dependsOn: war) {
  */
 test {
     scanForTestClasses = true
-    include 'unit/**/*Test.class'
+    include '**/*Test.class'
     maxParallelForks = 4
     testLogging {
         showStandardStreams = true
@@ -179,19 +247,23 @@ test {
         showExceptions = true
         showStackTraces = true
     }
+    outputs.upToDateWhen { false }
     afterTest { desc, result ->
-        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+        println "${color_blue}Executing unit test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+    }
+    doFirst {
+        println("${color_green}starting unit test ${color_end}")
     }
 }
 
 /**
- * Integration testing runner without server environment
+ * Integration testing configuration
  */
-task itestRunner(type: Test) {
+task itest(type: Test) {
     System.setProperty "http.port", port
     scanForTestClasses = true
-    include 'integration/**/*Test.class'
-    maxParallelForks = 4
+    include '**/*Test.class'
+    maxParallelForks = 1
     testLogging {
         showStandardStreams = true
         exceptionFormat "full"
@@ -200,7 +272,11 @@ task itestRunner(type: Test) {
         showStackTraces = true
     }
     afterTest { desc, result ->
-        println "${color_blue}Executing test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+        println "${color_blue}Executing integration test ${desc.name} [${desc.className}] with result: ${result.resultType}${color_end}"
+    }
+    outputs.upToDateWhen { false }
+    doFirst {
+        println("${color_green}starting integration test ${color_end}")
     }
     // set class path and pass args
     systemProperties = System.properties
@@ -208,20 +284,131 @@ task itestRunner(type: Test) {
     classpath = sourceSets.integration.runtimeClasspath
 }
 
+tasks.itest.dependsOn dockerCompose
+tasks.itest.finalizedBy dockerComposeDown
 /**
- * Integration test with docker start
+ * Json
  */
-task itest {
+import groovy.json.JsonBuilder
+import groovy.json.JsonSlurper
+
+/**
+ * Create ebs version
+ */
+task createEBSVersion {
+    ext.ebsVersionName = "Dockerrun.aws.${war.baseName}_${env}_${version}.json"
+    doLast {
+        def json = new JsonSlurper().parse(
+                """
+            {
+              "AWSEBDockerrunVersion": "1",
+              "Image": {
+                "Name": null,
+                "Update": "true"
+              },
+              "Ports": [
+                {
+                  "HostPort": 80,
+                  "ContainerPort": ${payaraPort}
+                }
+              ]
+            }
+            """.toCharArray()
+        )
+        json.Image.Name = "${awsECR}:${version}_${env}"
+        File dockerRun = file(ebsVersionName)
+        dockerRun.write(new JsonBuilder(json).toPrettyString())
+    }
+}
+
+tasks.createEBSVersion.mustRunAfter buildDocker
+/**
+ * Login to aws
+ */
+task loginToAws(type: Exec) {
+    standardOutput = new ByteArrayOutputStream()
+    commandLine "aws", "ecr", "get-login", "--region", "$awsRegion"
+    doLast {
+        List<String> commands = standardOutput.toString().split("\\s")
+        String command = commands.remove(0)
+        exec {
+            executable command
+            args commands
+        }
+    }
+}
+
+/**
+ * Check ebs version
+ */
+task checkEBSVersion(type: Exec, dependsOn: loginToAws) {
+    standardOutput = new ByteArrayOutputStream()
+    commandLine "aws", "elasticbeanstalk", "describe-application-versions", "--application-name", "$awsEBSApp", "--version-label", "$awsVersionLabel", "--region", "$awsRegion"
     doFirst {
-        println("${color_yellow}Waiting ${serverStartupTime} sec to deploy app in docker container${color_end}")
-        sleep(Integer.parseInt(serverStartupTime) * 1000)
+        println("${color_yellow} CHECK $awsEBSApp -> $awsVersionLabel -> $awsRegion ${color_end}")
     }
     doLast {
-        tasks.itestRunner.execute()
+        byte[] bytes = standardOutput.toByteArray()
+        println("${color_yellow}VERSIONS")
+        println(standardOutput.toString())
+        println("${color_end}")
+        def json = new JsonSlurper().parse(bytes)
+        if (json != null && json.ApplicationVersions != null && json.ApplicationVersions.size() > 0) {
+            throw new Error("VERSION EXISTS!!!")
+        }
+    }
+    ext.output = {
+        return 0
+    }
+}
+
+tasks.checkEBSVersion.mustRunAfter createEBSVersion
+/**
+ * Create docker build and ecr tags
+ */
+task createECRDockerTags(type: Exec, dependsOn: [buildDocker, createEBSVersion, checkEBSVersion]) {
+    commandLine "docker", "tag", "$dockerName", "$awsECR:${version}_${env}"
+    doFirst {
+        if (env.equals("prod")) {
+            exec {
+                commandLine "docker", "tag", "$dockerName", "$awsECR:latest"
+            }
+        }
     }
 }
 /**
- * On integration test rumpup docker
+ * Create s3 ECR version
  */
-tasks.itest.dependsOn startDocker
-tasks.itest.finalizedBy stopDocker
+task createS3ECRVersion(type: Exec, dependsOn: createECRDockerTags) {
+    commandLine "aws", "s3", "cp", "./$awsS3File", "s3://$awsEBSBucket/$awsS3File", "--region", "$awsRegion"
+}
+
+tasks.createS3ECRVersion.mustRunAfter clean
+/**
+ * publish to ecr
+ */
+task publishToECR(type: Exec, dependsOn: [clean, createS3ECRVersion]) {
+    executable "aws"
+    args = [
+            "elasticbeanstalk",
+            "create-application-version",
+            "--application-name",
+            "$awsEBSApp",
+            "--version-label",
+            "$awsVersionLabel",
+            "--source-bundle",
+            "S3Bucket=$awsEBSBucket,S3Key=$awsS3File",
+            "--region",
+            "$awsRegion"
+    ]
+    doFirst {
+        exec {
+            commandLine "docker", "push", "$awsECR:${version}_${env}"
+        }
+        if (env.equals("prod")) {
+            exec {
+                commandLine "docker", "push", "$awsECR:latest"
+            }
+        }
+    }
+}

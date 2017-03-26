@@ -2,11 +2,12 @@
 * In this example you can see how to setup build ready for micro service java ee environment.
 * By default server will be running on port 8080
 
-## Requirements:
+# Requirements:
 
 1. [JDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
-2. [Gradle gte >= 2.1](https://gradle.org/) 
-3. [Docker engine](https://www.docker.com/products/overview)
+2. [Gradle 3.x](https://gradle.org/) 
+3. [Docker](https://www.docker.com/products/overview)
+4. [AWS Cli](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
 
 ###  Building project
 ```sh
@@ -26,13 +27,7 @@ gradle test -Penv=test
 ### Starting integration test:
 All integration tests are running in docker.
 ```sh
-gradle itest
-```
-Starting multiple integration tests in parallel:
-```sh
-gradle itest -Pport=9000
-gradle itest -Pport=9001
-gradle itest -Pport=9002
+gradle itest -Penv=test
 ```
 
 ###  Starting/stopping docker server

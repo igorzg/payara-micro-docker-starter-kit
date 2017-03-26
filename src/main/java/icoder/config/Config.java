@@ -1,7 +1,9 @@
-package icoder.helpers;
+package icoder.config;
 
 import com.google.common.base.Strings;
 
+import javax.ejb.Singleton;
+import javax.enterprise.inject.Default;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -11,16 +13,17 @@ import java.util.Properties;
  *
  * @since 2.2
  */
+@Default
+@Singleton
 public class Config {
 
-    private static Properties properties = new Properties();
-
+    private Properties properties = new Properties();
     /**
      * Check if is development
      *
      * @return String
      */
-    public static boolean isDevelopment() {
+    public boolean isDevelopment() {
         String env = toString("environment");
         if (Strings.isNullOrEmpty(env)) {
             throw new RuntimeException("Configuration file is not loaded!");
@@ -33,7 +36,7 @@ public class Config {
      *
      * @return String
      */
-    public static boolean isStaging() {
+    public boolean isStaging() {
         String env = toString("environment");
         if (Strings.isNullOrEmpty(env)) {
             throw new RuntimeException("Configuration file is not loaded!");
@@ -46,7 +49,7 @@ public class Config {
      *
      * @return String
      */
-    public static boolean isTest() {
+    public boolean isTest() {
         String env = toString("environment");
         if (Strings.isNullOrEmpty(env)) {
             throw new RuntimeException("Configuration file is not loaded!");
@@ -59,7 +62,7 @@ public class Config {
      *
      * @return String
      */
-    public static boolean isProduction() {
+    public boolean isProduction() {
         String env = toString("environment");
         if (Strings.isNullOrEmpty(env)) {
             throw new RuntimeException("Configuration file is not loaded!");
@@ -71,7 +74,7 @@ public class Config {
      * @param name String
      * @return String
      */
-    public static Integer toInt(String name) {
+    public Integer toInt(String name) {
         return Integer.parseInt(toString(name));
     }
 
@@ -79,7 +82,7 @@ public class Config {
      * @param name String
      * @return String
      */
-    public static String toString(String name, String def) {
+    public String toString(String name, String def) {
         return properties.containsKey(name) ? properties.getProperty(name) : def;
     }
 
@@ -87,7 +90,7 @@ public class Config {
      * @param name String
      * @return String
      */
-    public static String toString(String name) {
+    public String toString(String name) {
         return properties.getProperty(name);
     }
 
@@ -99,21 +102,27 @@ public class Config {
      * @return Properties
      * @throws IOException
      */
-    public static Properties load(String fileName, ClassLoader classLoader) throws IOException {
+    public Properties load(String fileName, ClassLoader classLoader) throws IOException {
         InputStream inputStream = classLoader.getResourceAsStream(fileName);
         properties.load(inputStream);
         return properties;
     }
 
     /**
+     * Clear config
+     */
+    public void clear() {
+        properties.clear();
+    }
+    /**
      * Load config file as Properties
      *
-     * @param fileName String
+     * @param value String
      * @return Properties
      * @throws IOException
      */
-    public static Properties load(String fileName) throws IOException {
-        InputStream inputStream = Config.class.getClassLoader().getResourceAsStream(fileName);
+    public Properties load(String value) throws IOException {
+        InputStream inputStream = Config.class.getClassLoader().getResourceAsStream(value);
         properties.load(inputStream);
         return properties;
     }

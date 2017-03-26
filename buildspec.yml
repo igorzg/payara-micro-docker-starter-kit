@@ -1,0 +1,23 @@
+version: 0.1
+
+environment_variables:
+  plaintext:
+    SDKMAN_DIR: "/usr/local/sdkman"
+
+phases:
+  install:
+    commands:
+    - apt-get install -y unzip zip
+    - curl -s "https://get.sdkman.io" | bash
+    - source "$SDKMAN_DIR/bin/sdkman-init.sh"
+    - sdk version
+    - sdk install java
+    - sdk install gradle 3.3
+    - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+    - python get-pip.py
+    - pip install awscli
+
+  build:
+    commands:
+    - gradle clean test itest -Penv=test --stacktrace
+    - gradle clean build publishToECR -Penv=prod -x test --stacktrace
