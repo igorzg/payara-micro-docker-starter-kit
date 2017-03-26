@@ -1,6 +1,7 @@
 # Java EE micro service starter for kit with docker, payara micro, arquillian and AWS Cloud 
-* This is complete example how to setup java ee ready for micro service AWS Cloud deployment with elastic beanstalk
-* By default server will be running on port 8080
+* This is complete example how to setup java ee ready for micro service AWS Cloud deployment with AWS elastic beanstalk
+and AWS Code pipeline via AWS Code Build
+
 
 ## Requirements:
 
@@ -19,8 +20,9 @@ awsAccessKey=YOUR_ACCESS_KEY
 awsSecretKey=YOUR_SECRET_KEY
 ## EC2 Container Repository
 awsECR=YOUR_EC_REPOSITRY_URL
-## Elastic beanstalk config
+## Elastic beanstalk s3 deployment bucket
 awsEBSBucket=YOUR_AWS_DEPLOYMENT_BUCKET_FOR_ELASTIC_BEANSTALK
+## Elastic beanstalk config
 awsEBSApp=YOUR_ELASTIC_BEANSTALK_APPLICATION_NAME
 awsRegion=eu-central-1
 ```
@@ -32,6 +34,7 @@ gradle clean build -Penv=local
 ```
 
 ###  Starting embedded server
+Server will be running on default port 8080
 ```sh
 gradle startServer
 ```
