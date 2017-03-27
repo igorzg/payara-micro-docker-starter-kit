@@ -20,6 +20,6 @@ phases:
   build:
     commands:
     - gradle dockerCompose
-    - gradle clean test itest -Penv=test --stacktrace
+    - gradle clean test itest --stacktrace
     - gradle dockerComposeDown
     - gradle clean build publishToECR -Penv=prod -x test --stacktrace
