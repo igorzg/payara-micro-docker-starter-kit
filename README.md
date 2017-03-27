@@ -41,7 +41,7 @@ gradle startServer
 
 ### Starting unit tests:
 ```sh
-gradle test -Penv=test
+gradle test
 ```
 
 ### Starting integration test with arquillian:
@@ -54,7 +54,7 @@ gradle dockerCompose
 ```
 Then start tests:
 ```sh
-gradle itest -Penv=test
+gradle itest
 ```
 
 ###  Starting/stopping docker server
