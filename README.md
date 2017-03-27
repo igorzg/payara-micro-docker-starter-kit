@@ -47,6 +47,7 @@ gradle test -Penv=test
 ### Starting integration test with arquillian:
 Before tests docker compose hast to be started because you may need an local
 data store which you can run in docker.
+
 Run compose once:
 ```sh
 gradle dockerCompose
