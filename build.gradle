@@ -284,8 +284,8 @@ task itest(type: Test) {
     classpath = sourceSets.integration.runtimeClasspath
 }
 
-tasks.itest.dependsOn dockerCompose
-tasks.itest.finalizedBy dockerComposeDown
+// tasks.itest.dependsOn dockerCompose
+// tasks.itest.finalizedBy dockerComposeDown
 /**
  * Json
  */
