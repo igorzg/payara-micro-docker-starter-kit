@@ -11,9 +11,11 @@ and AWS Code pipeline via AWS Code Build
 4. [AWS Cli](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
 
 ##  Setting up properties 
-Before changing properties you need to setup AWS IAM account with Elastic Beanstalk / EC2 Container R/W permissions you as well
-need to create an EC2 Container remote repository and Elastic Beanstalk Single environment application with docker engine latest version 
-is suggested then you will need to change aws config in gradle.properties:
+Before changing properties you need to setup:
+* AWS IAM user account with Elastic Beanstalk / EC2 Container read write permissions.
+* EC2 Container Registry and Elastic Beanstalk Single environment application with docker engine
+
+Change aws config in gradle.properties:
 ```properties
 groupName=icoder
 awsAccessKey=YOUR_ACCESS_KEY
