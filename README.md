@@ -1,4 +1,4 @@
-# Java EE micro service starte kit with docker, payara micro, arquillian and AWS Cloud 
+# Java EE micro service starter kit with docker, payara micro, arquillian and AWS Cloud 
 * This is complete example how to setup java ee ready for micro service AWS Cloud deployment with AWS elastic beanstalk
 and AWS Code pipeline via AWS Code Build
 
