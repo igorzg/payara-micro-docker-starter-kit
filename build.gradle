@@ -327,7 +327,7 @@ tasks.createEBSVersion.mustRunAfter buildDocker
  */
 task loginToAws(type: Exec) {
     standardOutput = new ByteArrayOutputStream()
-    commandLine "aws", "ecr", "get-login", "--region", "$awsRegion"
+    commandLine "aws", "ecr", "get-login", "--region", "$awsRegion",  "--profile", "$awsProfile"
     doLast {
         List<String> commands = standardOutput.toString().split("\\s")
         String command = commands.remove(0)
@@ -343,7 +343,7 @@ task loginToAws(type: Exec) {
  */
 task checkEBSVersion(type: Exec, dependsOn: loginToAws) {
     standardOutput = new ByteArrayOutputStream()
-    commandLine "aws", "elasticbeanstalk", "describe-application-versions", "--application-name", "$awsEBSApp", "--version-label", "$awsVersionLabel", "--region", "$awsRegion"
+    commandLine "aws", "elasticbeanstalk", "describe-application-versions", "--application-name", "$awsEBSApp", "--version-label", "$awsVersionLabel", "--region", "$awsRegion",  "--profile", "$awsProfile"
     doFirst {
         println("${color_yellow} CHECK $awsEBSApp -> $awsVersionLabel -> $awsRegion ${color_end}")
     }
@@ -380,7 +380,7 @@ task createECRDockerTags(type: Exec, dependsOn: [buildDocker, createEBSVersion, 
  * Create s3 ECR version
  */
 task createS3ECRVersion(type: Exec, dependsOn: createECRDockerTags) {
-    commandLine "aws", "s3", "cp", "./$awsS3File", "s3://$awsEBSBucket/$awsS3File", "--region", "$awsRegion"
+    commandLine "aws", "s3", "cp", "./$awsS3File", "s3://$awsEBSBucket/$awsS3File", "--region", "$awsRegion", "--profile", "$awsProfile"
 }
 
 tasks.createS3ECRVersion.mustRunAfter clean
@@ -399,7 +399,9 @@ task publishToECR(type: Exec, dependsOn: [clean, createS3ECRVersion]) {
             "--source-bundle",
             "S3Bucket=$awsEBSBucket,S3Key=$awsS3File",
             "--region",
-            "$awsRegion"
+            "$awsRegion",
+            "--profile",
+            "$awsProfile"
     ]
     doFirst {
         exec {
