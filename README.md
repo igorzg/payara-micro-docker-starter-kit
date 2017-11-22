@@ -44,9 +44,6 @@ Before changing properties you need to setup:
 Change aws config in gradle.properties:
 ```properties
 groupName=icoder
-awsProfile=default
-awsAccessKey=YOUR_ACCESS_KEY
-awsSecretKey=YOUR_SECRET_KEY
 awsECRName=YOUR_EC_REPOSITORY_NAME
 awsId=YOUR_AWS_ID
 awsEBSApp=YOUR_ELASTIC_BEANSTALK_APPLICATION_NAME
