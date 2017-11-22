@@ -19,19 +19,34 @@ Before changing properties you need to setup:
     "Version": "2012-10-17",
     "Statement": [
         {
+            "Sid": "VisualEditor0",
             "Effect": "Allow",
             "Action": [
                 "s3:PutObject",
+                "s3:GetObject",
                 "s3:ListBucket",
-                "s3:ListObjects",
-                "ecr:BatchGetImage",
-                "ecr:DescribeImages",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": "arn:aws:s3:::elasticbeanstalk-*"
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetDownloadUrlForLayer",
                 "ecr:GetAuthorizationToken",
-                "ecr:DescribeRepositories",
+                "ecr:UploadLayerPart",
+                "elasticbeanstalk:CreateApplicationVersion",
                 "ecr:ListImages",
                 "ecr:PutImage",
+                "ecr:BatchGetImage",
+                "ecr:CompleteLayerUpload",
+                "ecr:DescribeImages",
                 "elasticbeanstalk:DescribeApplicationVersions",
-                "elasticbeanstalk:CreateApplicationVersion"
+                "ecr:DescribeRepositories",
+                "ecr:InitiateLayerUpload",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetRepositoryPolicy"
             ],
             "Resource": "*"
         }
