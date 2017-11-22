@@ -13,18 +13,42 @@ and AWS Code pipeline via AWS Code Build
 ##  Setting up properties 
 Before changing properties you need to setup:
 * AWS IAM user account with Elastic Beanstalk / EC2 Container read write permissions.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:ListBucket",
+                "s3:ListObjects",
+                "ecr:BatchGetImage",
+                "ecr:DescribeImages",
+                "ecr:GetAuthorizationToken",
+                "ecr:DescribeRepositories",
+                "ecr:ListImages",
+                "ecr:PutImage",
+                "elasticbeanstalk:DescribeApplicationVersions",
+                "elasticbeanstalk:CreateApplicationVersion"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
 * EC2 Container Registry and Elastic Beanstalk Single environment application with docker engine
 
 Change aws config in gradle.properties:
 ```properties
 groupName=icoder
+awsProfile=default
 awsAccessKey=YOUR_ACCESS_KEY
 awsSecretKey=YOUR_SECRET_KEY
-## EC2 Container Repository
-awsECR=YOUR_EC_REPOSITRY_URL
-## Elastic beanstalk s3 deployment bucket
-awsEBSBucket=YOUR_AWS_DEPLOYMENT_BUCKET_FOR_ELASTIC_BEANSTALK
-## Elastic beanstalk config
+awsECRName=YOUR_EC_REPOSITORY_NAME
+awsId=YOUR_AWS_ID
 awsEBSApp=YOUR_ELASTIC_BEANSTALK_APPLICATION_NAME
 awsRegion=eu-central-1
 ```

@@ -3,3 +3,4 @@
 log/
 build/
 payara-micro.jar
+Dockerrun.aws.*.json

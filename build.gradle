@@ -90,6 +90,8 @@ ext {
     dockerDir = "${project.buildDir}/docker"
     warDir = "${project.buildDir}/libs"
     awsS3File = "Dockerrun.aws.${rootProject.name}_${env}_${version}.json"
+    awsEBSBucket = "elasticbeanstalk-$awsRegion-$awsId"
+    awsECR = "${awsId}.dkr.ecr.${awsRegion}.amazonaws.com/${awsECRName}"
     awsVersionLabel = "${rootProject.name}_${env}_${version}"
 }
 
@@ -330,6 +332,13 @@ task loginToAws(type: Exec) {
     commandLine "aws", "ecr", "get-login", "--region", "$awsRegion",  "--profile", "$awsProfile"
     doLast {
         List<String> commands = standardOutput.toString().split("\\s")
+
+        // temp bugfix for aws ecr get-login result
+        commands.removeAt(commands.size() - 3) // remove -e
+        commands.removeAt(commands.size() - 2) // remove none
+
+        // println(commands.toString())
+
         String command = commands.remove(0)
         exec {
             executable command
@@ -345,7 +354,7 @@ task checkEBSVersion(type: Exec, dependsOn: loginToAws) {
     standardOutput = new ByteArrayOutputStream()
     commandLine "aws", "elasticbeanstalk", "describe-application-versions", "--application-name", "$awsEBSApp", "--version-label", "$awsVersionLabel", "--region", "$awsRegion",  "--profile", "$awsProfile"
     doFirst {
-        println("${color_yellow} CHECK $awsEBSApp -> $awsVersionLabel -> $awsRegion ${color_end}")
+        println("${color_yellow} CHECK $awsEBSApp -> $awsVersionLabel -> $awsRegion -> profile:$awsProfile ${color_end}")
     }
     doLast {
         byte[] bytes = standardOutput.toByteArray()
